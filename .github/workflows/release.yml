@@ -1,0 +1,118 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要发布的 Git tag（例如 v0.1.0）。tag 必须已经推送到 GitHub。'
+        required: true
+        default: 'v0.1.0'
+
+permissions:
+  contents: write
+
+jobs:
+  prepare-release:
+    if: startsWith(inputs.tag, 'v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Ensure GitHub Release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists"
+            exit 0
+          fi
+          gh release create "$TAG" \
+            --title "清扫 ${TAG#v}" \
+            --notes "清扫 ${TAG#v}" \
+            --verify-tag
+          echo "Created release $TAG"
+
+  build-mac:
+    needs: prepare-release
+    if: |
+      always() &&
+      (needs.prepare-release.result == 'success' || needs.prepare-release.result == 'skipped')
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # 始终用 main 上的最新打包配置；tag 只决定上传到哪个 Release。
+          ref: main
+
+      - name: Test
+        run: swift test
+
+      - name: Import signing certificate
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: |
+          test -n "$CSC_LINK" || { echo "缺少 secret CSC_LINK"; exit 1; }
+          test -n "$CSC_KEY_PASSWORD" || { echo "缺少 secret CSC_KEY_PASSWORD"; exit 1; }
+          echo "$CSC_LINK" | base64 --decode > /tmp/cert.p12
+          security create-keychain -p actions build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p actions build.keychain
+          security set-keychain-settings -lut 21600 build.keychain
+          security import /tmp/cert.p12 -k build.keychain -P "$CSC_KEY_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/productsign -A
+          curl -fsSL -o /tmp/g2.cer https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer
+          curl -fsSL -o /tmp/root.cer https://www.apple.com/appleca/AppleIncRootCertificate.cer
+          security import /tmp/g2.cer -k build.keychain -A
+          security import /tmp/root.cer -k build.keychain -A
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k actions build.keychain
+          security find-identity -v -p codesigning build.keychain
+
+      - name: Package, sign, and notarize
+        env:
+          VERSION: ${{ inputs.tag }}
+          CSC_KEYCHAIN: build.keychain
+          CSC_NAME: ${{ secrets.CSC_NAME }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          test -n "$CSC_NAME" || { echo "缺少 secret CSC_NAME"; exit 1; }
+          test -n "$APPLE_ID" || { echo "缺少 secret APPLE_ID"; exit 1; }
+          test -n "$APPLE_APP_SPECIFIC_PASSWORD" || { echo "缺少 secret APPLE_APP_SPECIFIC_PASSWORD"; exit 1; }
+          test -n "$APPLE_TEAM_ID" || { echo "缺少 secret APPLE_TEAM_ID"; exit 1; }
+          scripts/package-release.sh
+
+      - name: Verify signature and notarization
+        env:
+          VERSION: ${{ inputs.tag }}
+        run: |
+          APP="dist/Sweep.app"
+          echo "→ codesign"
+          codesign -dv --verbose=2 "$APP"
+          echo "→ Gatekeeper"
+          spctl -a -vv --type execute "$APP"
+          echo "→ staple"
+          xcrun stapler validate "$APP"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Sweep-macOS
+          path: |
+            dist/*.dmg
+            dist/*.zip
+
+      - name: Upload to GitHub Release
+        if: startsWith(inputs.tag, 'v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ inputs.tag }}" \
+            dist/*.dmg \
+            dist/*.zip \
+            --clobber

@@ -1,0 +1,13 @@
+ts	phase	decision	why	evidence	result
+2026-09-30T05:51:01Z	frame	framed Sweep as a native SwiftUI cleaner with a rule-engine risk floor	the repo is empty and a wrong delete is the one-way door, so the first artifact is a design not an app shell	.arena/brief.md	predicate written, arena not started
+2026-09-30T05:56:15Z	arena	scored three sketches and provisionally picked the Opus ledger	risk cannot be stored below the rule floor, and clean rechecks inode identity before a trash move	.arena/parent-scores.md	provisional, judge still running
+2026-09-30T06:00:15Z	arena	picked the Opus sketch and grafted the category split plus honest browser risk	parent and judge both picked Opus. Browser risk stays low and selection excludes that category	.arena/synthesis.md	contract written, implementation not started
+2026-09-30T06:21:15Z	verify	re-ran the suite and kept a symlink byte-count test	the implementer's summary is not the proof. The new test checks a cache symlink does not add the target's bytes	swift test, 19 passed	tests green
+2026-09-30T06:21:15Z	verify	opened Sweep only after wrapping it as an app bundle	the bare executable created menu bars and no content window	.build/Sweep.app, window 900x532	window listed, pixels not captured
+2026-09-30T06:28:09Z	verify	quit the live 清扫 process	it scans the real home and the default selection includes user caches	pid 83868	stopped
+2026-09-30T06:28:09Z	verify	store the API key in the Keychain	UserDefaults keeps the key in plaintext	Sources/SweepApp/SweepApp.swift KeychainStore	build green
+2026-09-30T06:28:09Z	verify	added a test where one of two cache dirs is already moved	a full rerun did not show a crash between items	partialMoveConvergesOnTheNextClean	test passed
+2026-09-30T06:28:09Z	frame	dropped junk-pattern exceptions	no shipped category needs to clean inside a protected zone	.arena/implement.md	stricter than the brief
+2026-09-30T06:28:09Z	frame	large-file reports skip Documents, Desktop, Pictures, and Mail	those trees stay out of the finding list, not only out of clean	Sources/SweepCore/Locator.swift zones.covers	intentional
+2026-09-30T06:28:09Z	verify	left FileManager.trashItem out of the suite	every run would put a file in the real Trash	Admission.move system case	untested on .system
+2026-09-30T06:45:51Z	feature	added a model question on each row and a leftover explorer	the model explains a path, and only a leftover verdict can be moved to the Trash	swift test, 23 passed	tests green
