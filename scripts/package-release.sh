@@ -13,10 +13,11 @@ swift build -c release --product SweepApp
 
 APP="dist/Sweep.app"
 rm -rf dist
-mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/SweepApp "$APP/Contents/MacOS/SweepApp"
 chmod +x "$APP/Contents/MacOS/SweepApp"
 cp Sources/SweepApp/Info.plist "$APP/Contents/Info.plist"
+cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP/Contents/Info.plist"
 /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $VERSION" "$APP/Contents/Info.plist"
 
